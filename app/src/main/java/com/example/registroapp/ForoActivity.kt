@@ -6,17 +6,23 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
@@ -38,7 +44,6 @@ class ForoActivity : ComponentActivity() {
     }
 }
 
-// Modelo de datos para Tema
 data class Tema(
     val id: String,
     val titulo: String,
@@ -52,24 +57,26 @@ data class Tema(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ForoScreen() {
-    val context = LocalContext.current
-    val correoActual = obtenerSesionActiva(context) ?: ""
-    val usuarioActual = obtenerUsuario(context, correoActual)
+    val ctx = LocalContext.current
+    val correo = obtenerSesionActiva(ctx) ?: ""
+    var usuario by remember { mutableStateOf(obtenerUsuario(ctx, correo)) }
+    var temas by remember { mutableStateOf(obtenerTodosTemas(ctx)) }
 
-    var temas by remember { mutableStateOf(obtenerTodosTemas(context)) }
+    val fotoBitmap = remember(usuario?.fotoPerfil) {
+        usuario?.fotoPerfil?.takeIf { it != "default" }?.let { base64ToBitmap(it) }
+    }
 
-    // Recargar automáticamente cuando la pantalla vuelve a estar visible
+    // Recargar al volver a la pantalla
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                temas = obtenerTodosTemas(context)
+                temas = obtenerTodosTemas(ctx)
+                usuario = obtenerUsuario(ctx, correo)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Scaffold(
@@ -81,20 +88,38 @@ fun ForoScreen() {
                     titleContentColor = Color.White
                 ),
                 actions = {
-                    // Botón Favoritos
-                    TextButton(onClick = {
-                        val intent = Intent(context, FavoritosActivity::class.java)
-                        context.startActivity(intent)
-                    }) {
+                    // Foto perfil
+                    Box(
+                        modifier = Modifier
+                            .padding(end = 8.dp)
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.2f))
+                            .border(2.dp, Color.White, CircleShape)
+                            .clickable { ctx.startActivity(Intent(ctx, PerfilActivity::class.java)) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (fotoBitmap != null) {
+                            Image(
+                                bitmap = fotoBitmap.asImageBitmap(),
+                                contentDescription = "Perfil",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Text("👤", fontSize = 20.sp)
+                        }
+                    }
+
+                    TextButton(onClick = { ctx.startActivity(Intent(ctx, FavoritosActivity::class.java)) }) {
                         Text("⭐ Favoritos", color = Color.White)
                     }
 
-                    // Botón Cerrar Sesión
                     TextButton(onClick = {
-                        cerrarSesion(context)
-                        val intent = Intent(context, LoginActivity::class.java)
-                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                        context.startActivity(intent)
+                        cerrarSesion(ctx)
+                        ctx.startActivity(Intent(ctx, LoginActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        })
                     }) {
                         Text("Salir", color = Color.White)
                     }
@@ -103,10 +128,7 @@ fun ForoScreen() {
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = {
-                    val intent = Intent(context, CrearTemaActivity::class.java)
-                    context.startActivity(intent)
-                },
+                onClick = { ctx.startActivity(Intent(ctx, CrearTemaActivity::class.java)) },
                 containerColor = CineRojo
             ) {
                 Text("➕", fontSize = 24.sp, color = Color.White)
@@ -121,34 +143,54 @@ fun ForoScreen() {
         ) {
             // Bienvenida
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White.copy(alpha = 0.1f)
-                )
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.1f))
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        "Bienvenido: ${usuarioActual?.nombre ?: "Usuario"}",
-                        color = Color.White,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        "Rol: ${usuarioActual?.rol ?: "Usuario"}",
-                        color = CineDorado,
-                        fontSize = 14.sp
-                    )
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(50.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.1f))
+                            .border(2.dp, CineDorado, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (fotoBitmap != null) {
+                            Image(
+                                bitmap = fotoBitmap.asImageBitmap(),
+                                contentDescription = "Foto",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Text("👤", fontSize = 24.sp)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column {
+                        Text(
+                            "Bienvenido: ${usuario?.nombre ?: "Usuario"}",
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            "Rol: ${usuario?.rol ?: "Usuario"}",
+                            color = CineDorado,
+                            fontSize = 14.sp
+                        )
+                    }
                 }
             }
 
-            // Lista de temas
+            // Lista temas
             if (temas.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
                         "No hay temas aún\nCrea el primero! 🎬",
                         color = Color.White.copy(alpha = 0.5f),
@@ -162,14 +204,11 @@ fun ForoScreen() {
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(temas) { tema ->
-                        TemaCard(
-                            tema = tema,
-                            onClick = {
-                                val intent = Intent(context, DetalleTemaActivity::class.java)
-                                intent.putExtra("tema_id", tema.id)
-                                context.startActivity(intent)
-                            }
-                        )
+                        TemaCard(tema) {
+                            ctx.startActivity(Intent(ctx, DetalleTemaActivity::class.java).apply {
+                                putExtra("tema_id", tema.id)
+                            })
+                        }
                     }
                 }
             }
@@ -180,12 +219,8 @@ fun ForoScreen() {
 @Composable
 fun TemaCard(tema: Tema, onClick: () -> Unit) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.1f)
-        ),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.1f)),
         shape = RoundedCornerShape(8.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -228,47 +263,36 @@ fun TemaCard(tema: Tema, onClick: () -> Unit) {
                     fontSize = 12.sp
                 )
                 Row {
-                    Text(
-                        "👍 ${tema.likes}",
-                        color = Color.White.copy(alpha = 0.7f),
-                        fontSize = 12.sp
-                    )
+                    Text("👍 ${tema.likes}", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        "👎 ${tema.dislikes}",
-                        color = Color.White.copy(alpha = 0.7f),
-                        fontSize = 12.sp
-                    )
+                    Text("👎 ${tema.dislikes}", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
                 }
             }
         }
     }
 }
 
-// Funciones para manejar temas en SharedPreferences
+// Funciones SharedPreferences
 
 fun guardarTema(context: Context, tema: Tema) {
     val sharedPref = context.getSharedPreferences("CineForo", Context.MODE_PRIVATE)
-    val editor = sharedPref.edit()
+    sharedPref.edit().apply {
+        putString("tema_${tema.id}_titulo", tema.titulo)
+        putString("tema_${tema.id}_autor", tema.autor)
+        putString("tema_${tema.id}_categoria", tema.categoria)
+        putString("tema_${tema.id}_descripcion", tema.descripcion)
+        putInt("tema_${tema.id}_likes", tema.likes)
+        putInt("tema_${tema.id}_dislikes", tema.dislikes)
 
-    editor.putString("tema_${tema.id}_titulo", tema.titulo)
-    editor.putString("tema_${tema.id}_autor", tema.autor)
-    editor.putString("tema_${tema.id}_categoria", tema.categoria)
-    editor.putString("tema_${tema.id}_descripcion", tema.descripcion)
-    editor.putInt("tema_${tema.id}_likes", tema.likes)
-    editor.putInt("tema_${tema.id}_dislikes", tema.dislikes)
-
-    // Agregar ID a la lista de temas
-    val temasIds = sharedPref.getStringSet("lista_temas", mutableSetOf())?.toMutableSet() ?: mutableSetOf()
-    temasIds.add(tema.id)
-    editor.putStringSet("lista_temas", temasIds)
-
-    editor.apply()
+        val temasIds = sharedPref.getStringSet("lista_temas", mutableSetOf())?.toMutableSet() ?: mutableSetOf()
+        temasIds.add(tema.id)
+        putStringSet("lista_temas", temasIds)
+        apply()
+    }
 }
 
 fun obtenerTema(context: Context, id: String): Tema? {
     val sharedPref = context.getSharedPreferences("CineForo", Context.MODE_PRIVATE)
-
     val titulo = sharedPref.getString("tema_${id}_titulo", null) ?: return null
     val autor = sharedPref.getString("tema_${id}_autor", null) ?: return null
     val categoria = sharedPref.getString("tema_${id}_categoria", null) ?: return null
@@ -282,28 +306,22 @@ fun obtenerTema(context: Context, id: String): Tema? {
 fun obtenerTodosTemas(context: Context): List<Tema> {
     val sharedPref = context.getSharedPreferences("CineForo", Context.MODE_PRIVATE)
     val temasIds = sharedPref.getStringSet("lista_temas", setOf()) ?: setOf()
-
-    return temasIds.mapNotNull { id ->
-        obtenerTema(context, id)
-    }.sortedByDescending { it.id } // Más recientes primero
+    return temasIds.mapNotNull { obtenerTema(context, it) }.sortedByDescending { it.id }
 }
 
 fun eliminarTema(context: Context, id: String) {
     val sharedPref = context.getSharedPreferences("CineForo", Context.MODE_PRIVATE)
-    val editor = sharedPref.edit()
+    sharedPref.edit().apply {
+        remove("tema_${id}_titulo")
+        remove("tema_${id}_autor")
+        remove("tema_${id}_categoria")
+        remove("tema_${id}_descripcion")
+        remove("tema_${id}_likes")
+        remove("tema_${id}_dislikes")
 
-    // Eliminar datos del tema
-    editor.remove("tema_${id}_titulo")
-    editor.remove("tema_${id}_autor")
-    editor.remove("tema_${id}_categoria")
-    editor.remove("tema_${id}_descripcion")
-    editor.remove("tema_${id}_likes")
-    editor.remove("tema_${id}_dislikes")
-
-    // Quitar de la lista
-    val temasIds = sharedPref.getStringSet("lista_temas", mutableSetOf())?.toMutableSet() ?: mutableSetOf()
-    temasIds.remove(id)
-    editor.putStringSet("lista_temas", temasIds)
-
-    editor.apply()
+        val temasIds = sharedPref.getStringSet("lista_temas", mutableSetOf())?.toMutableSet() ?: mutableSetOf()
+        temasIds.remove(id)
+        putStringSet("lista_temas", temasIds)
+        apply()
+    }
 }

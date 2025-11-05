@@ -38,17 +38,16 @@ class LoginActivity : ComponentActivity() {
         }
     }
 }
-//
+
 @Composable
 fun LoginScreen() {
     var correo by remember { mutableStateOf("") }
     var clave by remember { mutableStateOf("") }
     var mensaje by remember { mutableStateOf("") }
 
-    val context = LocalContext.current
+    val ctx = LocalContext.current
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Imagen de fondo
         Image(
             painter = painterResource(id = R.drawable.logo),
             contentDescription = "Fondo",
@@ -57,13 +56,12 @@ fun LoginScreen() {
             alpha = 0.2f
         )
 
-        // Gradiente oscuro
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(
+                        listOf(
                             Color.Black.copy(alpha = 0.8f),
                             Color.Black.copy(alpha = 0.6f),
                             Color.Black.copy(alpha = 0.9f)
@@ -72,7 +70,6 @@ fun LoginScreen() {
                 )
         )
 
-        // Contenido
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -81,115 +78,77 @@ fun LoginScreen() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Logo
+            Text("🎬", fontSize = 64.sp, modifier = Modifier.padding(bottom = 8.dp))
+            Text("CineForo", fontSize = 40.sp, fontWeight = FontWeight.Bold, color = CineRojo)
             Text(
-                text = "🎬",
-                fontSize = 64.sp,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            Text(
-                text = "CineForo",
-                fontSize = 40.sp,
-                fontWeight = FontWeight.Bold,
-                color = CineRojo
-            )
-
-            Text(
-                text = "Inicia sesión",
+                "Inicia sesión",
                 fontSize = 16.sp,
                 color = Color.White.copy(alpha = 0.7f),
                 modifier = Modifier.padding(bottom = 32.dp)
             )
 
-            // Campo Correo
+            val textFieldColors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.White.copy(alpha = 0.9f),
+                unfocusedContainerColor = Color.White.copy(alpha = 0.8f),
+                focusedIndicatorColor = CineRojo,
+                unfocusedIndicatorColor = Color.Gray
+            )
+
             TextField(
-                value = correo,
-                onValueChange = { correo = it },
+                correo, { correo = it },
                 label = { Text("Correo electrónico") },
                 singleLine = true,
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.White.copy(alpha = 0.9f),
-                    unfocusedContainerColor = Color.White.copy(alpha = 0.8f),
-                    focusedIndicatorColor = CineRojo,
-                    unfocusedIndicatorColor = Color.Gray
-                ),
+                colors = textFieldColors,
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Campo Contraseña
             TextField(
-                value = clave,
-                onValueChange = { clave = it },
+                clave, { clave = it },
                 label = { Text("Contraseña") },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.White.copy(alpha = 0.9f),
-                    unfocusedContainerColor = Color.White.copy(alpha = 0.8f),
-                    focusedIndicatorColor = CineRojo,
-                    unfocusedIndicatorColor = Color.Gray
-                ),
+                colors = textFieldColors,
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Botón Iniciar Sesión
             Button(
                 onClick = {
-                    when {
-                        correo.isEmpty() || clave.isEmpty() -> {
-                            mensaje = "Completa todos los campos 😐"
-                        }
+                    mensaje = when {
+                        correo.isEmpty() || clave.isEmpty() -> "Completa todos los campos 😐"
                         else -> {
-                            val usuario = obtenerUsuario(context, correo)
+                            val usuario = obtenerUsuario(ctx, correo)
                             if (usuario != null && usuario.clave == clave) {
-                                // Login exitoso
-                                guardarSesion(context, correo)
-                                mensaje = "✅ Bienvenido ${usuario.nombre}!"
-
-                                // Navegar al foro (crear después)
-                                val intent = Intent(context, ForoActivity::class.java)
-                                context.startActivity(intent)
+                                guardarSesion(ctx, correo)
+                                ctx.startActivity(Intent(ctx, ForoActivity::class.java))
+                                "✅ Bienvenido ${usuario.nombre}!"
                             } else {
-                                mensaje = "❌ Correo o contraseña incorrectos"
+                                "❌ Correo o contraseña incorrectos"
                             }
                         }
                     }
                 },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = CineRojo,
-                    contentColor = Color.White
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = CineRojo),
+                modifier = Modifier.fillMaxWidth().height(50.dp),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text(
-                    "Iniciar Sesión",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Text("Iniciar Sesión", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Mensaje
             if (mensaje.isNotEmpty()) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
                         containerColor = if (mensaje.startsWith("✅"))
-                            Color(0xFF2E7D32).copy(alpha = 0.2f)
-                        else
-                            Color(0xFFC62828).copy(alpha = 0.2f)
+                            Color(0xFF2E7D32).copy(alpha = 0.2f) else Color(0xFFC62828).copy(alpha = 0.2f)
                     ),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = mensaje,
+                        mensaje,
                         fontSize = 16.sp,
                         color = if (mensaje.startsWith("✅")) Color(0xFF4CAF50) else Color(0xFFEF5350),
                         fontWeight = FontWeight.Medium,
@@ -200,41 +159,28 @@ fun LoginScreen() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Link a registro
-            TextButton(
-                onClick = {
-                    val intent = Intent(context, MainActivity::class.java)
-                    context.startActivity(intent)
-                }
-            ) {
-                Text(
-                    text = "¿No tienes cuenta? Regístrate",
-                    color = CineDorado,
-                    fontSize = 14.sp
-                )
+            TextButton(onClick = { ctx.startActivity(Intent(ctx, MainActivity::class.java)) }) {
+                Text("¿No tienes cuenta? Regístrate", color = CineDorado, fontSize = 14.sp)
             }
         }
     }
 }
 
-// Guardar sesión actual
+// Funciones de sesión
 fun guardarSesion(context: Context, correo: String) {
-    val sharedPref = context.getSharedPreferences("CineForo", Context.MODE_PRIVATE)
-    val editor = sharedPref.edit()
-    editor.putString("sesion_activa", correo)
-    editor.apply()
+    context.getSharedPreferences("CineForo", Context.MODE_PRIVATE)
+        .edit()
+        .putString("sesion_activa", correo)
+        .apply()
 }
 
-// Obtener sesión actual
-fun obtenerSesionActiva(context: Context): String? {
-    val sharedPref = context.getSharedPreferences("CineForo", Context.MODE_PRIVATE)
-    return sharedPref.getString("sesion_activa", null)
-}
+fun obtenerSesionActiva(context: Context): String? =
+    context.getSharedPreferences("CineForo", Context.MODE_PRIVATE)
+        .getString("sesion_activa", null)
 
-// Cerrar sesión
 fun cerrarSesion(context: Context) {
-    val sharedPref = context.getSharedPreferences("CineForo", Context.MODE_PRIVATE)
-    val editor = sharedPref.edit()
-    editor.remove("sesion_activa")
-    editor.apply()
+    context.getSharedPreferences("CineForo", Context.MODE_PRIVATE)
+        .edit()
+        .remove("sesion_activa")
+        .apply()
 }

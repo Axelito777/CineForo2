@@ -57,4 +57,6 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     implementation("com.google.code.gson:gson:2.10.1")
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
+
 }
