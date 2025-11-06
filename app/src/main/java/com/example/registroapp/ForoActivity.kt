@@ -32,6 +32,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.example.registroapp.ui.theme.RegistroAppTheme
 
+// Muestra los temas del foro (reseñas publicadas).
+// Tiene un menú superior, lista de temas y botón para crear nuevo tema.
+
 class ForoActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,6 +47,7 @@ class ForoActivity : ComponentActivity() {
     }
 }
 
+// Modelo de datos que representa un tema o publicación
 data class Tema(
     val id: String,
     val titulo: String,
