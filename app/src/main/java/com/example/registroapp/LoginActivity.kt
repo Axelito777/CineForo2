@@ -41,11 +41,12 @@ class LoginActivity : ComponentActivity() {
 
 @Composable
 fun LoginScreen() {
+    // Variables que almacenan el texto que el usuario escribe
     var correo by remember { mutableStateOf("") }
     var clave by remember { mutableStateOf("") }
     var mensaje by remember { mutableStateOf("") }
 
-    val ctx = LocalContext.current
+    val ctx = LocalContext.current // contexto para abrir otras pantallas
 
     Box(modifier = Modifier.fillMaxSize()) {
         Image(
@@ -118,10 +119,10 @@ fun LoginScreen() {
                     mensaje = when {
                         correo.isEmpty() || clave.isEmpty() -> "Completa todos los campos 😐"
                         else -> {
-                            val usuario = obtenerUsuario(ctx, correo)
+                            val usuario = obtenerUsuario(ctx, correo) // busca en SharedPreferences
                             if (usuario != null && usuario.clave == clave) {
-                                guardarSesion(ctx, correo)
-                                ctx.startActivity(Intent(ctx, ForoActivity::class.java))
+                                guardarSesion(ctx, correo) // guarda la sesión activa
+                                ctx.startActivity(Intent(ctx, ForoActivity::class.java)) // pasa al foro
                                 "✅ Bienvenido ${usuario.nombre}!"
                             } else {
                                 "❌ Correo o contraseña incorrectos"
@@ -166,7 +167,7 @@ fun LoginScreen() {
     }
 }
 
-// Funciones de sesión
+// Funciones de sesión, Guarda el correo del usuario logueado
 fun guardarSesion(context: Context, correo: String) {
     context.getSharedPreferences("CineForo", Context.MODE_PRIVATE)
         .edit()
