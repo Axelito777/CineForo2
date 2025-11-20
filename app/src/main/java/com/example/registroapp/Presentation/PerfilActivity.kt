@@ -1,4 +1,4 @@
-package com.example.registroapp
+package com.example.registroapp.Presentation
 
 import android.Manifest
 import android.content.Intent
@@ -38,7 +38,9 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.example.registroapp.ui.theme.RegistroAppTheme
 import java.io.File
-
+import android.graphics.Matrix
+import androidx.exifinterface.media.ExifInterface
+import android.content.Context
 class PerfilActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -254,7 +256,7 @@ fun PerfilScreen() {
                     onClick = {
                         cerrarSesion(ctx)
                         ctx.startActivity(Intent(ctx, LoginActivity::class.java).apply {
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                         })
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Red.copy(alpha = 0.8f)),
@@ -284,4 +286,35 @@ fun InfoRow(icono: String, titulo: String, valor: String) {
             Text(valor, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
         }
     }
+}
+
+// ========== FUNCIONES AUXILIARES PARA IMÁGENES ==========
+
+fun redimensionarImagen(bitmap: Bitmap, maxWidth: Int, maxHeight: Int): Bitmap {
+    val ratio = minOf(maxWidth.toFloat() / bitmap.width, maxHeight.toFloat() / bitmap.height)
+    val newWidth = (bitmap.width * ratio).toInt()
+    val newHeight = (bitmap.height * ratio).toInt()
+    return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
+}
+
+fun corregirOrientacion(context: Context, uri: Uri, bitmap: Bitmap): Bitmap = try {
+    val inputStream = context.contentResolver.openInputStream(uri)
+    val exif = inputStream?.let { ExifInterface(it) }
+    inputStream?.close()
+
+    val orientation = exif?.getAttributeInt(
+        ExifInterface.TAG_ORIENTATION,
+        ExifInterface.ORIENTATION_NORMAL
+    ) ?: ExifInterface.ORIENTATION_NORMAL
+
+    val matrix = android.graphics.Matrix()
+    when (orientation) {
+        ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+        ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+        ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+    }
+
+    android.graphics.Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+} catch (e: Exception) {
+    bitmap
 }

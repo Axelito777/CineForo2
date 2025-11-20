@@ -1,4 +1,4 @@
-package com.example.registroapp
+package com.example.registroapp.Presentation
 
 import android.Manifest
 import android.content.Context
@@ -9,7 +9,6 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.net.Uri
 import android.os.Bundle
-import android.util.Base64
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -43,6 +42,8 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.exifinterface.media.ExifInterface
+import com.example.registroapp.Data.Repository.AuthRepository
+import com.example.registroapp.R
 import com.example.registroapp.ui.theme.RegistroAppTheme
 import kotlinx.coroutines.*
 import java.io.ByteArrayOutputStream
@@ -65,16 +66,6 @@ val CineRojo = Color(0xFFE50914)
 val CineNegro = Color(0xFF141414)
 val CineDorado = Color(0xFFFFD700)
 
-// Modelo Usuario
-data class Usuario(
-    val nombre: String,
-    val correo: String,
-    val clave: String,
-    val generoFavorito: String,
-    val rol: String = "Usuario",
-    val fotoPerfil: String? = null
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegistroScreen() {
@@ -85,114 +76,14 @@ fun RegistroScreen() {
     var generoFavorito by remember { mutableStateOf("Acción") }
     var expanded by remember { mutableStateOf(false) }
     var mensaje by remember { mutableStateOf("") }
-    var fotoBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    var mostrarDialogo by remember { mutableStateOf(false) }
-    var fotoUri by remember { mutableStateOf<Uri?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
 
     val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val authRepository = remember { AuthRepository() }
+
     val generos = listOf("Acción", "Comedia", "Drama", "Terror", "Ciencia Ficción",
         "Romance", "Thriller", "Animación", "Documental")
-
-    // Crear URI para foto
-    fun crearFotoUri(): Uri? = try {
-        FileProvider.getUriForFile(
-            ctx,
-            "${ctx.packageName}.fileprovider",
-            File(ctx.cacheDir, "foto_perfil_${System.currentTimeMillis()}.jpg")
-        )
-    } catch (e: Exception) {
-        Toast.makeText(ctx, "Error al preparar cámara", Toast.LENGTH_SHORT).show()
-        null
-    }
-
-    // Launcher cámara
-    val camaraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-        if (success && fotoUri != null) {
-            try {
-                val bitmap = BitmapFactory.decodeStream(ctx.contentResolver.openInputStream(fotoUri!!))
-                fotoBitmap = redimensionarImagen(corregirOrientacion(ctx, fotoUri!!, bitmap), 400, 400)
-                mensaje = "✅ Foto capturada"
-            } catch (e: Exception) {
-                mensaje = "Error al capturar foto"
-            }
-        }
-    }
-
-    // Launcher permiso
-    val permisoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { concedido ->
-        if (concedido) {
-            crearFotoUri()?.let { uri ->
-                fotoUri = uri
-                camaraLauncher.launch(uri)
-            }
-        } else {
-            Toast.makeText(ctx, "Permiso de cámara denegado", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    // Launcher galería
-    val galeriaLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        uri?.let {
-            try {
-                val bitmap = BitmapFactory.decodeStream(ctx.contentResolver.openInputStream(it))
-                fotoBitmap = redimensionarImagen(bitmap, 400, 400)
-                mensaje = "✅ Imagen seleccionada"
-            } catch (e: Exception) {
-                mensaje = "Error al cargar imagen"
-            }
-        }
-    }
-
-    // Diálogo foto
-    if (mostrarDialogo) {
-        AlertDialog(
-            onDismissRequest = { mostrarDialogo = false },
-            title = { Text("Agregar foto de perfil", color = CineRojo, fontWeight = FontWeight.Bold) },
-            text = {
-                Column {
-                    Text("¿Cómo quieres agregar tu foto?")
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Button(
-                        onClick = {
-                            mostrarDialogo = false
-                            if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                                crearFotoUri()?.let { uri ->
-                                    fotoUri = uri
-                                    camaraLauncher.launch(uri)
-                                }
-                            } else {
-                                permisoLauncher.launch(Manifest.permission.CAMERA)
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = CineRojo)
-                    ) {
-                        Text("📷 Tomar foto con cámara")
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Button(
-                        onClick = {
-                            mostrarDialogo = false
-                            galeriaLauncher.launch("image/*")
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = CineDorado)
-                    ) {
-                        Text("🖼️ Elegir de galería", color = Color.Black)
-                    }
-                }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { mostrarDialogo = false }) {
-                    Text("Cancelar", color = CineRojo)
-                }
-            }
-        )
-    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Image(
@@ -234,38 +125,6 @@ fun RegistroScreen() {
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
-            // Foto perfil
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(bottom = 16.dp)) {
-                Box(
-                    modifier = Modifier
-                        .size(120.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.1f))
-                        .border(3.dp, CineRojo, CircleShape)
-                        .clickable { mostrarDialogo = true },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (fotoBitmap != null) {
-                        Image(
-                            bitmap = fotoBitmap!!.asImageBitmap(),
-                            contentDescription = "Foto de perfil",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Text("👤", fontSize = 60.sp, color = Color.White.copy(alpha = 0.5f))
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = if (fotoBitmap != null) "Toca para cambiar foto" else "Toca para agregar foto",
-                    color = CineDorado,
-                    fontSize = 13.sp,
-                    modifier = Modifier.clickable { mostrarDialogo = true }
-                )
-            }
-
             // Campos de texto
             val textFieldColors = TextFieldDefaults.colors(
                 focusedContainerColor = Color.White.copy(alpha = 0.9f),
@@ -275,32 +134,33 @@ fun RegistroScreen() {
             )
 
             TextField(nombre, { nombre = it }, label = { Text("Nombre completo") }, singleLine = true,
-                colors = textFieldColors, modifier = Modifier.fillMaxWidth())
+                colors = textFieldColors, modifier = Modifier.fillMaxWidth(), enabled = !isLoading)
             Spacer(modifier = Modifier.height(16.dp))
 
             TextField(correo, { correo = it }, label = { Text("Correo electrónico") }, singleLine = true,
-                colors = textFieldColors, modifier = Modifier.fillMaxWidth())
+                colors = textFieldColors, modifier = Modifier.fillMaxWidth(), enabled = !isLoading)
             Spacer(modifier = Modifier.height(16.dp))
 
             TextField(clave, { clave = it }, label = { Text("Contraseña") }, singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
-                colors = textFieldColors, modifier = Modifier.fillMaxWidth())
+                colors = textFieldColors, modifier = Modifier.fillMaxWidth(), enabled = !isLoading)
             Spacer(modifier = Modifier.height(16.dp))
 
             TextField(confirmarClave, { confirmarClave = it }, label = { Text("Confirmar contraseña") }, singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
-                colors = textFieldColors, modifier = Modifier.fillMaxWidth())
+                colors = textFieldColors, modifier = Modifier.fillMaxWidth(), enabled = !isLoading)
             Spacer(modifier = Modifier.height(16.dp))
 
             // Dropdown género
-            ExposedDropdownMenuBox(expanded, { expanded = !expanded }) {
+            ExposedDropdownMenuBox(expanded, { expanded = !expanded && !isLoading }) {
                 TextField(
                     generoFavorito, {},
                     readOnly = true,
                     label = { Text("Género favorito") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
                     colors = textFieldColors,
-                    modifier = Modifier.menuAnchor().fillMaxWidth()
+                    modifier = Modifier.menuAnchor().fillMaxWidth(),
+                    enabled = !isLoading
                 )
 
                 ExposedDropdownMenu(expanded, { expanded = false }) {
@@ -320,28 +180,53 @@ fun RegistroScreen() {
             // Botón registrar
             Button(
                 onClick = {
-                    mensaje = when {
+                    when {
                         nombre.isEmpty() || correo.isEmpty() || clave.isEmpty() || confirmarClave.isEmpty() ->
-                            "Todos los campos son obligatorios 😐"
-                        !correo.contains("@") -> "Correo inválido 📧"
-                        clave.length < 6 -> "La contraseña debe tener al menos 6 caracteres 🔒"
-                        clave != confirmarClave -> "Las contraseñas no coinciden 🤯"
+                            mensaje = "Todos los campos son obligatorios 😐"
+                        !correo.contains("@") -> mensaje = "Correo inválido 📧"
+                        clave.length < 6 -> mensaje = "La contraseña debe tener al menos 6 caracteres 🔒"
+                        clave != confirmarClave -> mensaje = "Las contraseñas no coinciden 🤯"
                         else -> {
-                            guardarUsuario(ctx, nombre, correo, clave, generoFavorito, fotoBitmap?.let { bitmapToBase64(it) })
-                            GlobalScope.launch {
-                                delay(1500)
-                                ctx.startActivity(Intent(ctx, LoginActivity::class.java))
-                                (ctx as? ComponentActivity)?.finish()
+                            isLoading = true
+                            mensaje = "Registrando usuario..."
+
+                            scope.launch {
+                                val result = authRepository.registrarUsuario(
+                                    email = correo,
+                                    password = clave,
+                                    nombre = nombre,
+                                    generoFavorito = generoFavorito
+                                )
+
+                                result.fold(
+                                    onSuccess = {
+                                        mensaje = "✅ Registro exitoso! Redirigiendo..."
+                                        delay(1500)
+                                        ctx.startActivity(Intent(ctx, LoginActivity::class.java))
+                                        (ctx as? ComponentActivity)?.finish()
+                                    },
+                                    onFailure = { error ->
+                                        mensaje = "❌ Error: ${error.message}"
+                                        isLoading = false
+                                    }
+                                )
                             }
-                            "✅ Registro exitoso! Redirigiendo al login..."
                         }
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = CineRojo),
                 modifier = Modifier.fillMaxWidth().height(50.dp),
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(8.dp),
+                enabled = !isLoading
             ) {
-                Text("Registrarse en CineForo", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                } else {
+                    Text("Registrarse en CineForo", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
             }
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -372,7 +257,8 @@ fun RegistroScreen() {
                 onClick = {
                     ctx.startActivity(Intent(ctx, LoginActivity::class.java))
                     (ctx as? ComponentActivity)?.finish()
-                }
+                },
+                enabled = !isLoading
             ) {
                 Text("¿Ya tienes cuenta? Inicia sesión", color = CineDorado, fontSize = 14.sp)
             }
@@ -380,62 +266,34 @@ fun RegistroScreen() {
     }
 }
 
-// ========== FUNCIONES AUXILIARES ==========
-
+// Mantén las funciones auxiliares existentes (no las eliminamos por si acaso)
 fun bitmapToBase64(bitmap: Bitmap): String {
     val outputStream = ByteArrayOutputStream()
     bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
-    return Base64.encodeToString(outputStream.toByteArray(), Base64.DEFAULT)
+    return android.util.Base64.encodeToString(outputStream.toByteArray(), android.util.Base64.DEFAULT)
 }
 
 fun base64ToBitmap(base64: String): Bitmap? = try {
-    val bytes = Base64.decode(base64, Base64.DEFAULT)
+    val bytes = android.util.Base64.decode(base64, android.util.Base64.DEFAULT)
     BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
 } catch (e: Exception) {
     null
 }
 
-fun redimensionarImagen(bitmap: Bitmap, maxWidth: Int, maxHeight: Int): Bitmap {
-    val ratio = minOf(maxWidth.toFloat() / bitmap.width, maxHeight.toFloat() / bitmap.height)
-    val newWidth = (bitmap.width * ratio).toInt()
-    val newHeight = (bitmap.height * ratio).toInt()
-    return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
-}
+data class Usuario(
+    val nombre: String,
+    val correo: String,
+    val clave: String,
+    val generoFavorito: String,
+    val rol: String = "Usuario",
+    val fotoPerfil: String? = null
+)
+// ========== FUNCIONES DE COMPATIBILIDAD (SharedPreferences) ==========
+// Mantener hasta migrar todas las activities
 
-fun corregirOrientacion(context: Context, uri: Uri, bitmap: Bitmap): Bitmap = try {
-    val inputStream = context.contentResolver.openInputStream(uri)
-    val exif = inputStream?.let { ExifInterface(it) }
-    inputStream?.close()
-
-    val orientation = exif?.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
-        ?: ExifInterface.ORIENTATION_NORMAL
-
-    val matrix = Matrix()
-    when (orientation) {
-        ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
-        ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
-        ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
-    }
-
-    Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-} catch (e: Exception) {
-    bitmap
-}
-
-fun guardarUsuario(context: Context, nombre: String, correo: String, clave: String, genero: String, fotoPerfil: String? = null) {
-    val sharedPref = context.getSharedPreferences("CineForo", Context.MODE_PRIVATE)
-    val prefix = correo.replace("@", "_").replace(".", "_")
-    sharedPref.edit().apply {
-        putString("${prefix}_nombre", nombre)
-        putString("${prefix}_correo", correo)
-        putString("${prefix}_clave", clave)
-        putString("${prefix}_genero", genero)
-        putString("${prefix}_rol", "Usuario")
-        putString("${prefix}_foto", fotoPerfil ?: "default")
-        putString("ultimo_usuario", correo)
-        apply()
-    }
-}
+fun obtenerSesionActiva(context: Context): String? =
+    context.getSharedPreferences("CineForo", Context.MODE_PRIVATE)
+        .getString("sesion_activa", null)
 
 fun obtenerUsuario(context: Context, correo: String): Usuario? {
     val sharedPref = context.getSharedPreferences("CineForo", Context.MODE_PRIVATE)
@@ -450,6 +308,20 @@ fun obtenerUsuario(context: Context, correo: String): Usuario? {
     return if (nombre != null && correoGuardado != null && clave != null && genero != null) {
         Usuario(nombre, correoGuardado, clave, genero, rol, foto)
     } else null
+}
+
+fun guardarSesion(context: Context, correo: String) {
+    context.getSharedPreferences("CineForo", Context.MODE_PRIVATE)
+        .edit()
+        .putString("sesion_activa", correo)
+        .apply()
+}
+
+fun cerrarSesion(context: Context) {
+    context.getSharedPreferences("CineForo", Context.MODE_PRIVATE)
+        .edit()
+        .remove("sesion_activa")
+        .apply()
 }
 
 fun actualizarFotoPerfil(context: Context, correo: String, fotoBase64: String) {

@@ -1,6 +1,5 @@
-package com.example.registroapp
+package com.example.registroapp.Presentation
 
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -25,7 +24,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.registroapp.Data.Repository.AuthRepository
+import com.example.registroapp.R
 import com.example.registroapp.ui.theme.RegistroAppTheme
+import kotlinx.coroutines.launch
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,8 +46,11 @@ fun LoginScreen() {
     var correo by remember { mutableStateOf("") }
     var clave by remember { mutableStateOf("") }
     var mensaje by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
 
     val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val authRepository = remember { AuthRepository() }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Image(
@@ -99,7 +104,8 @@ fun LoginScreen() {
                 label = { Text("Correo electrónico") },
                 singleLine = true,
                 colors = textFieldColors,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isLoading
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -109,31 +115,56 @@ fun LoginScreen() {
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
                 colors = textFieldColors,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isLoading
             )
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
                 onClick = {
-                    mensaje = when {
-                        correo.isEmpty() || clave.isEmpty() -> "Completa todos los campos 😐"
+                    when {
+                        correo.isEmpty() || clave.isEmpty() ->
+                            mensaje = "Completa todos los campos 😐"
                         else -> {
-                            val usuario = obtenerUsuario(ctx, correo)
-                            if (usuario != null && usuario.clave == clave) {
-                                guardarSesion(ctx, correo)
-                                ctx.startActivity(Intent(ctx, ForoActivity::class.java))
-                                "✅ Bienvenido ${usuario.nombre}!"
-                            } else {
-                                "❌ Correo o contraseña incorrectos"
+                            isLoading = true
+                            mensaje = "Iniciando sesión..."
+
+                            scope.launch {
+                                val result = authRepository.iniciarSesion(correo, clave)
+
+                                result.fold(
+                                    onSuccess = { usuario ->
+                                        mensaje = "✅ Bienvenido ${usuario.nombre}!"
+                                        kotlinx.coroutines.delay(1000)
+
+                                        val intent = Intent(ctx, HomeActivity::class.java)
+                                        intent.putExtra("correo", usuario.email)
+                                        intent.putExtra("nombre", usuario.nombre)
+                                        ctx.startActivity(intent)
+                                        (ctx as? ComponentActivity)?.finish()
+                                    },
+                                    onFailure = { error ->
+                                        mensaje = "❌ Correo o contraseña incorrectos"
+                                        isLoading = false
+                                    }
+                                )
                             }
                         }
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = CineRojo),
                 modifier = Modifier.fillMaxWidth().height(50.dp),
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(8.dp),
+                enabled = !isLoading
             ) {
-                Text("Iniciar Sesión", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                } else {
+                    Text("Iniciar Sesión", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
             }
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -159,28 +190,12 @@ fun LoginScreen() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            TextButton(onClick = { ctx.startActivity(Intent(ctx, MainActivity::class.java)) }) {
+            TextButton(
+                onClick = { ctx.startActivity(Intent(ctx, MainActivity::class.java)) },
+                enabled = !isLoading
+            ) {
                 Text("¿No tienes cuenta? Regístrate", color = CineDorado, fontSize = 14.sp)
             }
         }
     }
-}
-
-// Funciones de sesión
-fun guardarSesion(context: Context, correo: String) {
-    context.getSharedPreferences("CineForo", Context.MODE_PRIVATE)
-        .edit()
-        .putString("sesion_activa", correo)
-        .apply()
-}
-
-fun obtenerSesionActiva(context: Context): String? =
-    context.getSharedPreferences("CineForo", Context.MODE_PRIVATE)
-        .getString("sesion_activa", null)
-
-fun cerrarSesion(context: Context) {
-    context.getSharedPreferences("CineForo", Context.MODE_PRIVATE)
-        .edit()
-        .remove("sesion_activa")
-        .apply()
 }

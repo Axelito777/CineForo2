@@ -9,6 +9,8 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
 
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -21,7 +23,7 @@
 
         <!-- Pantalla de Login (primera pantalla) -->
         <activity
-            android:name=".LoginActivity"
+            android:name=".Presentation.LoginActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -31,33 +33,38 @@
 
         <!-- Pantalla de Registro -->
         <activity
-            android:name=".MainActivity"
+            android:name=".Presentation.MainActivity"
             android:exported="false" />
 
         <!-- Pantalla del Foro -->
         <activity
-            android:name=".ForoActivity"
+            android:name=".Presentation.ForoActivity"
             android:exported="false" />
 
         <!-- Crear Tema -->
         <activity
-            android:name=".CrearTemaActivity"
+            android:name=".Presentation.CrearTemaActivity"
             android:exported="false" />
 
         <!-- Detalle del Tema -->
         <activity
-            android:name=".DetalleTemaActivity"
+            android:name=".Presentation.DetalleTemaActivity"
             android:exported="false" />
 
         <!-- Favoritos -->
         <activity
-            android:name=".FavoritosActivity"
+            android:name=".Presentation.FavoritosActivity"
             android:exported="false" />
 
         <!-- Perfil del Usuario (NUEVA) -->
         <activity
-            android:name=".PerfilActivity"
+            android:name=".Presentation.PerfilActivity"
             android:exported="false" />
+
+        <activity
+            android:name=".Presentation.HomeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.RegistroApp" />
 
         <!-- Proveedor de archivos para la cámara -->
         <provider
