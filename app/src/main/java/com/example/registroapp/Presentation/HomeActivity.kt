@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.example.registroapp.Data.Repository.ForoRepositoryMicroserviceImpl
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -146,7 +147,7 @@ fun HomeScreen(correo: String, nombre: String) {
             }
 
             composable("forum") {
-                val foroRepository = ForoRepositoryImpl()
+                val foroRepository = ForoRepositoryMicroserviceImpl()
 
                 val viewModel = remember {
                     ForoViewModel(

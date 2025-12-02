@@ -8,15 +8,24 @@ plugins {
 
 android {
     namespace = "com.example.registroapp"
-    compileSdk = 35  // ⚠️ Cambiado de 36 a 35
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.registroapp"
         minSdk = 24
-        targetSdk = 35  // ⚠️ Cambiado de 36 a 35
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = file("../cineforo-release.jks")
+            storePassword = "cineforo2024"
+            keyAlias = "cineforo"
+            keyPassword = "cineforo2024"
+        }
     }
 
     buildTypes {
@@ -26,6 +35,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
@@ -53,12 +63,12 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-
-    // Material Icons Extended
     implementation("androidx.compose.material:material-icons-extended:1.5.4")
 
     // ===== TESTING =====
     testImplementation(libs.junit)
+    testImplementation("org.jetbrains.kotlin:kotlin-test:1.9.20")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:1.9.20")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
@@ -100,10 +110,6 @@ dependencies {
 
     // ===== COIL (Imágenes) =====
     implementation("io.coil-kt:coil-compose:2.5.0")
-
-    // ===== ROOM (Base de datos local) =====
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
 
     // ===== OTROS =====
     implementation("androidx.exifinterface:exifinterface:1.3.7")

@@ -1,14 +1,12 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-
     <!-- Permisos para foto de perfil -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
-
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <application
@@ -19,8 +17,8 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.RegistroApp">
-
+        android:theme="@style/Theme.RegistroApp"
+        android:networkSecurityConfig="@xml/network_security_config">
         <!-- Pantalla de Login (primera pantalla) -->
         <activity
             android:name=".Presentation.LoginActivity"
@@ -30,42 +28,22 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
         <!-- Pantalla de Registro -->
         <activity
             android:name=".Presentation.MainActivity"
             android:exported="false" />
-
         <!-- Pantalla del Foro -->
         <activity
             android:name=".Presentation.ForoActivity"
             android:exported="false" />
-
-        <!-- Crear Tema -->
-        <activity
-            android:name=".Presentation.CrearTemaActivity"
-            android:exported="false" />
-
-        <!-- Detalle del Tema -->
-        <activity
-            android:name=".Presentation.DetalleTemaActivity"
-            android:exported="false" />
-
-        <!-- Favoritos -->
-        <activity
-            android:name=".Presentation.FavoritosActivity"
-            android:exported="false" />
-
         <!-- Perfil del Usuario (NUEVA) -->
         <activity
             android:name=".Presentation.PerfilActivity"
             android:exported="false" />
-
         <activity
             android:name=".Presentation.HomeActivity"
             android:exported="false"
             android:theme="@style/Theme.RegistroApp" />
-
         <!-- Proveedor de archivos para la cámara -->
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -76,6 +54,5 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
-
     </application>
 </manifest>
