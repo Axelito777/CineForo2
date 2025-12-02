@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavType
+import com.example.registroapp.Data.Repository.FavoriteRepositoryMicroserviceImpl
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -167,7 +168,10 @@ fun HomeScreen(correo: String, nombre: String) {
 
             composable("favorites") {
                 val authRepository = AuthRepository()
-                val favoriteRepository = FavoriteRepositoryImpl(authRepository = authRepository)
+
+                val favoriteRepository = FavoriteRepositoryMicroserviceImpl(
+                    getUserId = { authRepository.obtenerUsuarioActual().getOrNull()?.id }
+                )
 
                 val viewModel = remember {
                     FavoritosViewModel(
@@ -204,16 +208,15 @@ fun HomeScreen(correo: String, nombre: String) {
 
             composable(
                 route = "movie_detail/{movieId}",
-                arguments = listOf(
-                    navArgument("movieId") { type = NavType.IntType }
-                )
+                arguments = listOf(navArgument("movieId") { type = NavType.IntType })
             ) { backStackEntry ->
                 val movieId = backStackEntry.arguments?.getInt("movieId") ?: return@composable
 
                 val movieRepository = MovieRepositoryImpl(RetrofitInstance.api)
                 val authRepository = AuthRepository()
-                val favoriteRepository = FavoriteRepositoryImpl(
-                    authRepository = authRepository
+
+                val favoriteRepository = FavoriteRepositoryMicroserviceImpl(
+                    getUserId = { authRepository.obtenerUsuarioActual().getOrNull()?.id }
                 )
 
                 val viewModel = remember {
